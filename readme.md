@@ -13,6 +13,8 @@
    ```
 
 1. [Configure](#configuration)
+2. Have the program run semi-regularly e.g. by crontab if the device is frequently
+   running at a particular time or adding the program as a startup program
 
 ## Configuration
 
