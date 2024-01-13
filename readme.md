@@ -1,4 +1,4 @@
-# :sunrise: retime :sunset:
+# :sunrise: retime :city_sunset:
 
 > Time your GNOME Dynamic Wallpapers to be synchronise with your local
 > sunrise and sunset times using the [Open-Meteo API](https://open-meteo.com/en/docs/).
