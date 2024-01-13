@@ -1,0 +1,5 @@
+latitude = 51.5007343
+longitude = -0.1257605
+
+sunrise-sunset-factor = 1 # multiply duration of sunrise and sunset (default: 1)
+transition-duration = 5 # seconds (default: 5)
