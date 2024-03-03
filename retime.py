@@ -53,7 +53,8 @@ def get_args():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--config", type=Path, default=Path(xdg_home).joinpath('retime').joinpath('config.toml'))
-    parser.add_argument("wallpaper", type=Path)
+    parser.add_argument("--wallpaper", type=Path)
+    parser.add_argument("-v", "--verbose", action='store_true')
     return parser.parse_args()
 
 
@@ -99,16 +100,23 @@ def get_timings(latitude, longitude, sunrise_sunset_factor):
             }
 
 def generate_xml(wallpaper_path, timings, transition_duration):
-    start = dt.fromtimestamp(timings['start_time'])
+    start = dt.fromtimestamp(timings['start_time']-SECONDS_PER_DAY)
     config = tomllib.loads(wallpaper_path.joinpath('retime.toml').read_text())
     images = []
 
+    d0 = start.replace(hour=0, minute=0, second=0)
+    cumsum = start.timestamp() - d0.timestamp()
     for time_of_day in [ 'sunrise', 'day', 'sunset', 'night' ]:
+        print(f"{time_of_day=}")
         for image_path in config[time_of_day]:
+            path = str(wallpaper_path.joinpath(image_path).absolute())
+            duration = float(timings[time_of_day]/len(config[time_of_day]))
             images.append({
-                    'path': str(wallpaper_path.joinpath(image_path).absolute()),
-                    'duration': float(timings[time_of_day]/len(config[time_of_day]))
+                    'path': path,
+                    'duration': duration
                 })
+            print(f"{duration=}\t{cumsum/3600=}\t{path=}")
+            cumsum += duration
 
     return XML_TEMPLATE.render(start=start, images=images, transition_duration=float(transition_duration))
 
@@ -122,8 +130,27 @@ def main(args):
             config['longitude'],
             config['sunrise-sunset-factor']
             )
-    print(f"{config=} {timings=}")
-    args.wallpaper.with_suffix('.xml').write_text(generate_xml(args.wallpaper, timings, transition_duration))
+    print(f"{config=}\n{timings=}")
+
+    background = Path(config['images'])
+    if args.wallpaper:
+        background = args.wallpaper
+    background.with_suffix('.xml').write_text(generate_xml(background, timings, transition_duration))
+
+    if not args.verbose:
+        return 0
+
+    cumsum = 0
+    for key, val in timings.items():
+        print(f"{key}\tstart = {cumsum/3600%24} hours")
+        print(f"{key}\t  dur = {val/3600} hours")
+        if key == 'start_time':
+            d = dt.fromtimestamp(val)
+            d0 = d.replace(hour=0, minute=0, second=0)
+            cumsum = d.timestamp() - d0.timestamp()
+        else:
+            cumsum += val
+        print(f"{key}\t  end = {cumsum/3600%24} hours")
     return 0
 
 
