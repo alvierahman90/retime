@@ -67,26 +67,23 @@ def get_weather_data(latitude, longitude):
             "forecast_days": 1,
         }).json()
 
-def get_timings(latitude, longitude, sunrise_sunset_factor):
+def get_timings(latitude, longitude, sunrise_sunset_duration):
     weather_data = get_weather_data(latitude, longitude)
 
     sunrise_time = weather_data['daily']['sunrise'][0]
     sunset_time = weather_data['daily']['sunset'][0]
 
-    # the discrepancy between sunshine and daylight is due to the time taken
-    # for the sun to rise and set - this can be used to estimate the durations
-    # of sunrise and sunset
-    sunshine_discrepancy = weather_data['daily']['daylight_duration'][0] - weather_data['daily']['sunshine_duration'][0]
-
-    sunrise_duration = sunrise_sunset_factor*sunshine_discrepancy/2
+    sunrise_duration = sunrise_sunset_duration
     sunrise_start = sunrise_time - 0.5*sunrise_duration
     sunrise_end = sunrise_time + 0.5*sunrise_duration
-    sunset_duration = sunrise_sunset_factor*sunshine_discrepancy/2
+    sunset_duration = sunrise_sunset_duration
     sunset_start = sunset_time - 0.5*sunset_duration
     sunset_end = sunset_time + 0.5*sunset_duration
 
     day_duration = sunset_start - sunrise_end
     night_duration = SECONDS_PER_DAY - sunset_duration - day_duration - sunrise_duration
+
+    print(f"{sunrise_sunset_duration=} {sunrise_start=} {sunrise_end=} {sunset_start=} {sunset_end=}")
 
     return {
             # we start time from the start of sunset
@@ -107,7 +104,7 @@ def generate_xml(wallpaper_path, timings, transition_duration):
         for image_path in config[time_of_day]:
             images.append({
                     'path': str(wallpaper_path.joinpath(image_path).absolute()),
-                    'duration': float(timings[time_of_day]/len(config[time_of_day]))
+                    'duration': float(timings[time_of_day]/len(config[time_of_day])) - transition_duration
                 })
 
     return XML_TEMPLATE.render(start=start, images=images, transition_duration=float(transition_duration))
@@ -115,12 +112,12 @@ def generate_xml(wallpaper_path, timings, transition_duration):
 def main(args):
     """ Entry point for script """
     config = tomllib.loads(args.config.read_text())
-    sunrise_sunset_factor = config.get('sunrise-sunset-factor', 1)
+    sunrise_sunset_duration = config.get('sunrise-sunset-duration', 3600)
     transition_duration = config.get('transition-duration', 5)
     timings = get_timings(
             config['latitude'],
             config['longitude'],
-            config['sunrise-sunset-factor']
+            sunrise_sunset_duration,
             )
     print(f"{config=} {timings=}")
     args.wallpaper.with_suffix('.xml').write_text(generate_xml(args.wallpaper, timings, transition_duration))
